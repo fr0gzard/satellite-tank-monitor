@@ -4,7 +4,7 @@ Core idea: absolute fill % from one image is fragile, but *changes* in interior
 brightness over years are robust. White -> rust -> dark = emptied.
 """
 import numpy as np
-from .geometry import disk_mean
+from geometry import disk_mean
 
 
 def series(path_fmt, version_ids, cx, cy, r_in_px, ref_cx, ref_cy, ref_r_px):
@@ -14,7 +14,7 @@ def series(path_fmt, version_ids, cx, cy, r_in_px, ref_cx, ref_cy, ref_r_px):
     Returns list of dicts: vid, interior, ref, ratio.
     """
     from PIL import Image
-    from .geometry import to_gray
+    from geometry import to_gray
     rows = []
     for vid in version_ids:
         img = Image.open(path_fmt.format(vid=vid)).convert("RGB")

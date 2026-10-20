@@ -10,7 +10,7 @@ Conventions: angles in degrees, 0=E, 90=S (image coords, y down).
 Inner band is on the SUN side; outer shadow on the ANTI-SUN side.
 """
 import numpy as np
-from .geometry import wedge_profile
+from geometry import wedge_profile
 
 
 def measure_outer(img_gray, cx, cy, r_px, shadow_deg, gsd,
