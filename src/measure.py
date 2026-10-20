@@ -160,7 +160,11 @@ def measure_fill(img_bgr, cx, cy, r, verify=True):
     gray = cv2.cvtColor(img_bgr, cv2.COLOR_BGR2GRAY)
     support = None
     if verify:
-        cx, cy, r, support = verify_center(img_bgr, cx, cy, r)
+        # Limit the support scan to a sane band around the seed radius:
+        # an unconstrained scan climbs onto berm/dyke edges and returns
+        # oversize circles on bermed tank farms.
+        cx, cy, r, support = verify_center(
+            img_bgr, cx, cy, r, search_c=30, search_r=max(8, int(0.2 * r)))
     sun = sun_azimuth(gray, cx, cy, r)
     if sun is None:
         return {"cx": cx, "cy": cy, "r": r, "support": support,
@@ -235,7 +239,19 @@ def measure_fill(img_bgr, cx, cy, r, verify=True):
         fills["area"] = 1 - l_inner / l_outer_area
     if a_in and a_out:
         fills["area_raw"] = 1 - a_in / a_out
-    vals = [v for v in fills.values() if v is not None]
+    # Sanity gates: a ground shadow shorter than the inner band is
+    # physically impossible (means that estimator got contaminated),
+    # and a fill outside [0, 1] is a failed estimate, not data. Only
+    # gated estimates feed the consensus; raw values stay visible.
+    gated = {}
+    if l_outer_ray and l_outer_ray >= 0.9 * l_inner:
+        gated["ray"] = fills["ray"]
+    if l_outer_area and l_outer_area >= 0.9 * l_inner:
+        gated["area"] = fills["area"]
+    if "area_raw" in fills and 0.0 <= fills["area_raw"] <= 1.0:
+        gated["area_raw"] = fills["area_raw"]
+    gated = {k: v for k, v in gated.items() if -0.02 <= v <= 1.02}
+    vals = list(gated.values())
     return {
         "cx": cx, "cy": cy, "r": r, "support": support,
         "sun_deg": sun, "anti_deg": anti,
@@ -244,6 +260,8 @@ def measure_fill(img_bgr, cx, cy, r, verify=True):
         "l_outer_area_px": l_outer_area,
         "a_inner": int(a_in), "a_outer": int(a_out),
         "fills": fills,
+        "fills_gated": gated,
         "fill_range": (min(vals), max(vals)) if vals else None,
         "fill_consensus": float(np.median(vals)) if vals else None,
+        "note": None if vals else "estimators diverged/contaminated",
     }
